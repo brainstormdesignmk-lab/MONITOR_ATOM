@@ -1,0 +1,7 @@
+node_modules/
+.env
+*.log
+data/logs/*
+data/state/*
+!data/logs/.gitkeep
+!data/state/.gitkeep

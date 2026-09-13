@@ -1,0 +1,14 @@
+[Unit]
+Description=Metropolis Atom5 Monitor Watchdog
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/metropolis/monitor
+ExecStart=/usr/bin/node /opt/metropolis/monitor/src/monitor.js
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

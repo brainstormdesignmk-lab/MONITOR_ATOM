@@ -1,0 +1,52 @@
+{
+  "nodes": [
+    {
+      "id": "atom1",
+      "host": "",
+      "sshUser": "metropolis",
+      "port": 22,
+      "services": [
+        { "name": "lina", "health": "http", "healthPort": 8301, "healthPath": "/health", "service": "metropolis-lina" },
+        { "name": "ana",  "health": "http", "healthPort": 8302, "healthPath": "/health", "service": "metropolis-ana" }
+      ]
+    },
+    {
+      "id": "atom2",
+      "host": "",
+      "sshUser": "metropolis",
+      "port": 22,
+      "services": [
+        { "name": "lina", "health": "http", "healthPort": 8301, "healthPath": "/health", "service": "metropolis-lina" },
+        { "name": "ana",  "health": "http", "healthPort": 8302, "healthPath": "/health", "service": "metropolis-ana" }
+      ]
+    },
+    {
+      "id": "atom3",
+      "host": "",
+      "sshUser": "metropolis",
+      "port": 22,
+      "services": [
+        { "name": "lina", "health": "http", "healthPort": 8301, "healthPath": "/health", "service": "metropolis-lina" },
+        { "name": "ana",  "health": "http", "healthPort": 8302, "healthPath": "/health", "service": "metropolis-ana" }
+      ]
+    },
+    {
+      "id": "atom4",
+      "host": "",
+      "sshUser": "metropolis",
+      "port": 22,
+      "services": [
+        { "name": "relay", "health": "http", "healthPort": 8400, "healthPath": "/health", "service": "metropolis-relay", "requiresToken": false }
+      ]
+    },
+    {
+      "id": "t60",
+      "host": "",
+      "sshUser": "metropolis",
+      "port": 22,
+      "services": [
+        { "name": "data-hub", "health": "http", "healthPort": 8200, "healthPath": "/health", "service": "metropolis-data-hub" }
+      ]
+    }
+  ]
+}

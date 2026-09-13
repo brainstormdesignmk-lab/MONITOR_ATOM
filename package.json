@@ -1,0 +1,14 @@
+{
+  "name": "metropolis-monitor",
+  "version": "0.2.0",
+  "description": "Metropolis Atom5 cluster monitor and watchdog",
+  "main": "src/monitor.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/monitor.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

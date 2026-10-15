@@ -1,0 +1,14 @@
+• From a workstation terminal, run:
+ 
+  ssh -t atom6 /home/atom/metropolis-monitor/scripts/dashboard.sh
+ 
+  Use the arrow keys to move through machines, Page Up/Page Down to scroll, r to
+  refresh, and q to exit.
+ 
+  To check the service instead of opening the dashboard:
+ 
+  ssh atom6 '/home/atom/metropolis-monitor/scripts/user-service.sh status'
+ 
+  Atom2, Atom3, and Atom5 will show SSH DOWN until they’re reachable on the
+  network.
+ 

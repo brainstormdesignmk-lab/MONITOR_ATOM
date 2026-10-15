@@ -1,52 +1,11 @@
 {
   "nodes": [
-    {
-      "id": "atom1",
-      "host": "",
-      "sshUser": "metropolis",
-      "port": 22,
-      "services": [
-        { "name": "lina", "health": "http", "healthPort": 8301, "healthPath": "/health", "service": "metropolis-lina" },
-        { "name": "ana",  "health": "http", "healthPort": 8302, "healthPath": "/health", "service": "metropolis-ana" }
-      ]
-    },
-    {
-      "id": "atom2",
-      "host": "",
-      "sshUser": "metropolis",
-      "port": 22,
-      "services": [
-        { "name": "lina", "health": "http", "healthPort": 8301, "healthPath": "/health", "service": "metropolis-lina" },
-        { "name": "ana",  "health": "http", "healthPort": 8302, "healthPath": "/health", "service": "metropolis-ana" }
-      ]
-    },
-    {
-      "id": "atom3",
-      "host": "",
-      "sshUser": "metropolis",
-      "port": 22,
-      "services": [
-        { "name": "lina", "health": "http", "healthPort": 8301, "healthPath": "/health", "service": "metropolis-lina" },
-        { "name": "ana",  "health": "http", "healthPort": 8302, "healthPath": "/health", "service": "metropolis-ana" }
-      ]
-    },
-    {
-      "id": "atom4",
-      "host": "",
-      "sshUser": "metropolis",
-      "port": 22,
-      "services": [
-        { "name": "relay", "health": "http", "healthPort": 8400, "healthPath": "/health", "service": "metropolis-relay", "requiresToken": false }
-      ]
-    },
-    {
-      "id": "t60",
-      "host": "",
-      "sshUser": "metropolis",
-      "port": 22,
-      "services": [
-        { "name": "data-hub", "health": "http", "healthPort": 8200, "healthPath": "/health", "service": "metropolis-data-hub" }
-      ]
-    }
+    { "id": "atom1", "host": "192.168.1.11", "sshUser": "atom", "port": 22, "role": "application" },
+    { "id": "atom2", "host": "192.168.1.12", "sshUser": "atom", "port": 22, "role": "application" },
+    { "id": "atom3", "host": "192.168.1.13", "sshUser": "atom", "port": 22, "role": "application" },
+    { "id": "atom4", "host": "192.168.1.14", "sshUser": "atom", "port": 22, "role": "relay" },
+    { "id": "atom5", "host": "192.168.1.15", "sshUser": "atom", "port": 22, "role": "marketing" },
+    { "id": "atom6", "host": "192.168.1.16", "sshUser": "atom", "port": 22, "role": "monitor", "local": true },
+    { "id": "t60", "host": "192.168.1.20", "sshUser": "metropolis4", "port": 22, "role": "data hub" }
   ]
 }

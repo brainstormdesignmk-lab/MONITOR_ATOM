@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const os = require("os");
 
 function loadEnv(file = path.join(process.cwd(), ".env")) {
     if (!fs.existsSync(file)) return;
@@ -20,10 +21,11 @@ loadEnv();
 const rootDir = path.resolve(__dirname, "..");
 
 const config = {
-    nodeId: process.env.NODE_ID || "atom5",
+    nodeId: process.env.NODE_ID || "atom6",
     role: process.env.MONITOR_ROLE || "watchdog",
 
-    host: process.env.MONITOR_HOST || "0.0.0.0",
+    // The operator UI is intended to be reached through an SSH session.
+    host: "127.0.0.1",
     port: Number(process.env.MONITOR_PORT || 8500),
 
     token: process.env.RELAY_TOKEN || "",
@@ -33,6 +35,11 @@ const config = {
 
     sshTimeout:
         Number(process.env.SSH_TIMEOUT_SECONDS || 10) * 1000,
+
+    sshKeyFile: process.env.MONITOR_SSH_KEY || path.join(os.homedir(), ".ssh", "metropolis-monitor"),
+
+    metricsTimeout:
+        Number(process.env.METRICS_TIMEOUT_SECONDS || 15) * 1000,
 
     recoveryEnabled:
         String(process.env.RECOVERY_ENABLED || "false").toLowerCase() === "true",

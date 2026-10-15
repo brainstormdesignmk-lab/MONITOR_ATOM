@@ -1,17 +1,29 @@
 const { execFile } = require("child_process");
+const config = require("./config");
 
 function runSSH(node, command, timeout) {
     return new Promise(resolve => {
         const target = `${node.sshUser}@${node.host}`;
-        execFile("ssh", [
+        const args = [
             "-o", "BatchMode=yes",
-            "-o", `ConnectTimeout=${Math.floor(timeout / 1000)}`,
+            "-o", "ConnectTimeout=" + Math.max(1, Math.ceil(timeout / 1000)),
+            "-o", "ConnectionAttempts=1",
+            "-o", "StrictHostKeyChecking=yes",
+            "-o", "ServerAliveInterval=3",
+            "-o", "ServerAliveCountMax=1",
+            "-o", "IdentitiesOnly=yes",
+            "-i", node.identityFile || config.sshKeyFile,
             "-p", String(node.port || 22),
             target,
             command
-        ], { timeout }, (error, stdout, stderr) => {
+        ];
+        execFile("ssh", args, { timeout, maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
             if (error) {
-                resolve({ ok: false, error: error.message, stdout, stderr });
+                const detail = (stderr || "").trim();
+                const message = detail || (error.killed
+                    ? "SSH command timed out"
+                    : error.code != null ? "SSH exited with code " + error.code : error.message);
+                resolve({ ok: false, error: message, stdout, stderr });
                 return;
             }
             resolve({ ok: true, stdout, stderr });
@@ -24,11 +36,17 @@ async function checkSSH(node, timeout) {
 }
 
 async function restartService(node, service, timeout) {
-    // exact command must match the sudoers rule on the managed node
+    // Service names are configuration, but still restrict them to systemd-safe characters.
+    if (!/^[A-Za-z0-9_.@:-]+$/.test(service)) {
+        return { ok: false, error: "Invalid service name" };
+    }
     return runSSH(node, `sudo /usr/bin/systemctl restart ${service}`, timeout);
 }
 
 async function serviceStatus(node, service, timeout) {
+    if (!/^[A-Za-z0-9_.@:-]+$/.test(service)) {
+        return { ok: false, error: "Invalid service name" };
+    }
     return runSSH(node, `systemctl is-active ${service}`, timeout);
 }
 

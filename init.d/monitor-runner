@@ -1,0 +1,28 @@
+#!/bin/sh
+
+INSTALL_DIR=${MONITOR_DIR:-/opt/metropolis/monitor}
+NODE_BIN=${NODE_BIN:-$(command -v node)}
+LOGFILE="$INSTALL_DIR/data/logs/monitor.log"
+child=
+
+stop_child() {
+    if [ -n "$child" ]; then
+        kill -TERM "$child" 2>/dev/null || true
+        wait "$child" 2>/dev/null || true
+    fi
+    exit 0
+}
+trap stop_child TERM INT
+
+while :; do
+    "$NODE_BIN" "$INSTALL_DIR/src/monitor.js" &
+    child=$!
+    wait "$child"
+    result=$?
+    child=
+    printf '%s monitor process exited (%s); restarting in 5 seconds\n' "$(date -Is 2>/dev/null || date)" "$result" >> "$LOGFILE"
+    sleep 5 &
+    child=$!
+    wait "$child"
+    child=
+done

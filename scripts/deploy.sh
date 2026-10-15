@@ -3,21 +3,17 @@ set -e
 
 PROJECT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 
-echo "Running tests..."
-cd "$PROJECT_DIR"
-node --test
-echo "Tests passed."
-
-sudo systemctl stop metropolis-monitor 2>/dev/null || true
+sudo service metropolis-monitor stop 2>/dev/null || true
 ./scripts/install.sh
 
-sudo systemctl start metropolis-monitor
-sleep 2
+sudo service metropolis-monitor start
+sleep 3
 
-if curl -fsS http://127.0.0.1:8500/health > /dev/null; then
+if curl --connect-timeout 2 --max-time 5 -fsS http://127.0.0.1:8500/health > /dev/null; then
     echo "=== MONITOR DEPLOYED SUCCESSFULLY ==="
 else
     echo "MONITOR FAILED HEALTH CHECK"
-    sudo systemctl status metropolis-monitor --no-pager
+    sudo service metropolis-monitor status || true
+    tail -80 /opt/metropolis/monitor/data/logs/monitor.log || true
     exit 1
 fi

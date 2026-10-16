@@ -71,6 +71,18 @@ exits. The supplied `ssh-monitor-main.zip` is a Rust/Ratatui reference project;
 this appliance uses the local Node dashboard instead and does not need Rust or
 the ZIP's dependencies.
 
+The selected node's row has **REBOOT** and **SHUTDOWN** controls at its end.
+Press Right to focus the controls, Right again to move between them, and Left
+to return focus to the node details. Up/Down changes nodes while retaining the
+focused control. Press Enter, then `y`, to confirm; `n` or Escape cancels.
+Remote actions run `sudo -n /sbin/reboot` or `sudo -n /sbin/poweroff` over SSH.
+Atom6 uses the same commands through local `sudo -n`. The connected Atom1,
+Atom4, Atom6, and T60 currently have narrow NOPASSWD sudoers entries for both
+commands. Atom2, Atom3, and Atom5 were unreachable during setup, so their
+permissions still need verification. Check the command paths on each OS before
+adding equivalent narrow sudoers entries with `visudo`; do not grant
+passwordless access to a shell to enable these buttons.
+
 ## Configuration and recovery
 
 The repository inventory is copied on each deploy, so edit

@@ -1,5 +1,8 @@
 const http = require("http");
 const readline = require("readline");
+const fs = require("fs");
+const config = require("./config");
+const ssh = require("./ssh");
 
 const host = process.env.MONITOR_HOST || "127.0.0.1";
 const port = Number(process.env.MONITOR_PORT || 8500);
@@ -10,6 +13,16 @@ let followSelection = true;
 let latest = null;
 let lastError = "waiting for monitor";
 let stopped = false;
+let actionFocus = 0;
+let confirmation = null;
+let actionBusy = false;
+let actionMessage = "";
+const pendingActions = new Map();
+const verificationTimeout = 120000;
+
+const ACTIONS = [null, "reboot", "shutdown"];
+const inventory = JSON.parse(fs.readFileSync(config.nodesFile, "utf8")).nodes || [];
+const inventoryById = new Map(inventory.map(node => [node.id, node]));
 
 function getStatus() {
     return new Promise((resolve, reject) => {
@@ -89,17 +102,20 @@ function render() {
             return `${d.mount} ${human(used)}/${human(total)} free ${human(free)} ${percent}%`;
         }).join("; ") || "--";
         const status = node.checking ? "CHECKING" : node.online ? "UP" : "SSH DOWN";
-        const row = width < 100
-            ? `${index === selected ? ">" : " "} ${fit(node.id, 6)} ${fit(node.host, 15)} ${fit(node.online ? "UP" : node.checking ? "CHECK" : "DOWN", 5)} CPU:${pct(m.cpuPercent).trim()}% TEMP:${m.temperatureC == null ? "--" : m.temperatureC.toFixed(1)}C RAM:${m.memory ? human(m.memory.usedKb) + "/" + human(m.memory.availableKb) : "--"}`
-            : `${index === selected ? ">" : " "} ${fit(node.id, 7)} ${fit(node.role, 12)} ${fit(node.host, 15)} ${fit(status, 7)} ${pct(m.cpuPercent)} ${m.temperatureC == null ? " -- " : String(m.temperatureC.toFixed(1)).padStart(5)} ${fit(mem, 22)}`;
-        content.push({ text: row, selected: index === selected, node });
+        const controls = index === selected
+            ? `  ${actionFocus === 1 ? "[ REBOOT ]" : " REBOOT  "} ${actionFocus === 2 ? "[ SHUTDOWN ]" : " SHUTDOWN "}`
+            : "";
+        const row = width < 120
+            ? `${index === selected ? ">" : " "} ${fit(node.id, 6)} ${fit(node.host, 15)} ${fit(node.online ? "UP" : node.checking ? "CHECK" : "DOWN", 5)} C:${pct(m.cpuPercent).trim()}% T:${m.temperatureC == null ? "--" : m.temperatureC.toFixed(0)}C R:${m.memory ? human(m.memory.usedKb) + "/" + human(m.memory.availableKb) : "--"}${controls}`
+            : `${index === selected ? ">" : " "} ${fit(node.id, 7)} ${fit(node.role, 12)} ${fit(node.host, 15)} ${fit(status, 7)} ${pct(m.cpuPercent)} ${m.temperatureC == null ? " -- " : String(m.temperatureC.toFixed(1)).padStart(5)} ${fit(mem, 22)}${controls}`;
+        content.push({ text: row, selected: index === selected, node, control: index === selected && actionFocus > 0 });
         addDetail(content, "DISK", diskSummary, width);
         const interfaces = m.interfaces || [];
         const network = interfaces.length ? interfaces.map(i => `${i.name} ${i.address} (${i.state})`).join(", ") : (node.online ? "No IPv4 interface reported" : (node.error || "SSH metrics unavailable"));
         addDetail(content, "LAN", network, width);
     });
 
-    const available = Math.max(1, height - 9);
+    const available = Math.max(1, height - 10);
     const selectedLine = nodeLineIndices[selected] || 0;
     if (followSelection) {
         if (selectedLine < scroll) scroll = selectedLine;
@@ -108,18 +124,94 @@ function render() {
     if (scroll > Math.max(0, content.length - available)) scroll = Math.max(0, content.length - available);
     content.slice(scroll, scroll + available).forEach(item => {
         let text = item.text.slice(0, width).padEnd(width);
-        if (item.selected) text = "\x1b[1;32m" + text + "\x1b[0m";
+        if (item.control) {
+            const button = item.text.indexOf(actionFocus === 1 ? "[ REBOOT ]" : "[ SHUTDOWN ]");
+            const end = button < 0 ? -1 : button + (actionFocus === 1 ? 10 : 12);
+            text = "\x1b[1;32m" + text.slice(0, Math.max(0, button)) + "\x1b[0m" +
+                "\x1b[1;30;43m" + text.slice(Math.max(0, button), end) + "\x1b[0m" +
+                "\x1b[1;32m" + text.slice(end) + "\x1b[0m";
+        } else if (item.selected) text = "\x1b[1;32m" + text + "\x1b[0m";
         else if (!item.sub && item.node && !item.node.online) text = "\x1b[31m" + text + "\x1b[0m";
         lines.push(text);
     });
-    while (lines.length < height - 2) lines.push("");
+    while (lines.length < height - 3) lines.push("");
     lines.push("─".repeat(Math.max(0, width)));
-    lines.push("↑/↓ select  PgUp/PgDn scroll  r refresh  q quit   " + (lastError ? "Status: " + lastError : "All status data current"));
-    process.stdout.write("\x1b[H" + lines.slice(0, height).join("\n"));
+    if (confirmation) {
+        lines.push(`Confirm ${confirmation.action.toUpperCase()} ${confirmation.node.id} (${confirmation.node.host})?  y = confirm  n/Esc = cancel`);
+    } else if (actionBusy) {
+        lines.push("Sending power command; the SSH connection may close if the machine acts on it...");
+    } else {
+        lines.push("↑/↓ machine  → actions  ← specs  Enter execute  PgUp/PgDn scroll  r refresh  q quit");
+    }
+    if (actionMessage || lastError) lines.push((actionMessage || "Status: " + lastError).slice(0, width));
+    process.stdout.write("\x1b[H\x1b[2J" + lines.slice(0, height).join("\n"));
+}
+
+function updatePendingActions(status) {
+    const states = status && status.nodes || {};
+    const now = Date.now();
+    for (const [id, pending] of pendingActions) {
+        const node = states[id];
+        const checkedAt = node && Date.parse(node.lastCheck || "");
+        if (node && Number.isFinite(checkedAt) && checkedAt >= pending.sentAt) {
+            if (pending.action === "reboot") {
+                if (!node.online) {
+                    pending.sawOffline = true;
+                    actionMessage = `REBOOT sent to ${id}; machine is offline, waiting for it to return...`;
+                } else if (pending.sawOffline) {
+                    pendingActions.delete(id);
+                    actionMessage = `REBOOT verified: ${id} is reachable again.`;
+                    continue;
+                }
+            } else if (!node.online) {
+                pendingActions.delete(id);
+                actionMessage = `SHUTDOWN observed: ${id} is no longer reachable over SSH.`;
+                continue;
+            }
+        }
+        if (now - pending.sentAt >= verificationTimeout) {
+            pendingActions.delete(id);
+            actionMessage = pending.action === "reboot"
+                ? pending.sawOffline
+                    ? `REBOOT not verified: ${id} has not returned within two minutes.`
+                    : `REBOOT not verified: ${id} never appeared offline within two minutes.`
+                : `SHUTDOWN not observed: ${id} is still reachable or has no fresh check.`;
+        }
+    }
+}
+
+async function executePowerAction(action) {
+    const node = inventoryById.get(confirmation.node.id);
+    const target = confirmation.node;
+    confirmation = null;
+    if (!node) {
+        actionMessage = "No inventory entry for " + target.id;
+        render();
+        return;
+    }
+    actionBusy = true;
+    actionMessage = "Sending " + action + " to " + target.id + "...";
+    render();
+    const sentAt = Date.now();
+    const result = await ssh.powerAction(node, action, 12000);
+    actionBusy = false;
+    if (result.ok) {
+        pendingActions.set(target.id, { action, sentAt, sawOffline: false });
+        actionMessage = action === "reboot"
+            ? `REBOOT accepted by ${target.id}; watching for it to go offline and return.`
+            : `SHUTDOWN accepted by ${target.id}; watching for it to become unreachable.`;
+    } else {
+        actionMessage = `${action.toUpperCase()} failed for ${target.id}: ${result.error || "unknown error"}`;
+    }
+    render();
 }
 
 async function refresh() {
-    try { latest = await getStatus(); lastError = ""; }
+    try {
+        latest = await getStatus();
+        lastError = "";
+        updatePendingActions(latest);
+    }
     catch (error) { lastError = error.message; }
     render();
 }
@@ -142,10 +234,32 @@ readline.emitKeypressEvents(process.stdin);
 process.stdin.setRawMode(true);
 process.stdin.resume();
 process.stdin.on("keypress", (str, key) => {
+    if (confirmation) {
+        if (str && str.toLowerCase() === "y") executePowerAction(confirmation.action);
+        else if (str && str.toLowerCase() === "n" || key && key.name === "escape") {
+            confirmation = null;
+            actionMessage = "Power action cancelled.";
+            render();
+        }
+        return;
+    }
     if (key && (key.name === "q" || key.ctrl && key.name === "c")) return stop();
     const count = latest ? Object.keys(latest.nodes || {}).length : 0;
-    if (key && key.name === "up") { selected = Math.max(0, selected - 1); followSelection = true; }
-    if (key && key.name === "down") { selected = Math.min(Math.max(0, count - 1), selected + 1); followSelection = true; }
+    if (key && key.name === "up") { selected = Math.max(0, selected - 1); followSelection = true; actionMessage = ""; }
+    if (key && key.name === "down") { selected = Math.min(Math.max(0, count - 1), selected + 1); followSelection = true; actionMessage = ""; }
+    if (key && key.name === "right") actionFocus = Math.min(2, actionFocus + 1);
+    if (key && key.name === "left") actionFocus = 0;
+    if (key && key.name === "return" && actionFocus > 0 && !actionBusy) {
+        const node = latest && latest.nodes && latest.nodes[Object.keys(latest.nodes).sort()[selected]];
+        if (node) {
+            if (pendingActions.has(node.id)) {
+                actionMessage = `Waiting for ${node.id}'s previous power action to be verified.`;
+            } else {
+                confirmation = { action: ACTIONS[actionFocus], node };
+                actionMessage = "";
+            }
+        }
+    }
     if (key && key.name === "pageup") { scroll = Math.max(0, scroll - 8); followSelection = false; }
     if (key && key.name === "pagedown") { scroll += 8; followSelection = false; }
     if (str === "r") refresh();

@@ -1,6 +1,11 @@
 const { execFile } = require("child_process");
 const config = require("./config");
 
+const POWER_COMMANDS = {
+    reboot: "sudo -n /sbin/reboot",
+    shutdown: "sudo -n /sbin/poweroff"
+};
+
 function runSSH(node, command, timeout) {
     return new Promise(resolve => {
         const target = `${node.sshUser}@${node.host}`;
@@ -50,4 +55,25 @@ async function serviceStatus(node, service, timeout) {
     return runSSH(node, `systemctl is-active ${service}`, timeout);
 }
 
-module.exports = { runSSH, checkSSH, restartService, serviceStatus };
+function runLocalPowerAction(action, timeout) {
+    const args = ["-n", action === "reboot" ? "/sbin/reboot" : "/sbin/poweroff"];
+    return new Promise(resolve => {
+        execFile("sudo", args, { timeout }, (error, stdout, stderr) => {
+            if (error) {
+                resolve({ ok: false, error: (stderr || "").trim() || error.message, stdout, stderr });
+            } else {
+                resolve({ ok: true, stdout, stderr });
+            }
+        });
+    });
+}
+
+function powerAction(node, action, timeout) {
+    const command = POWER_COMMANDS[action];
+    if (!command) return Promise.resolve({ ok: false, error: "Unsupported power action" });
+    // Atom6 is the dashboard host, so use its local sudo rather than requiring
+    // its outbound SSH key to be authorized on itself.
+    return node.local ? runLocalPowerAction(action, timeout) : runSSH(node, command, timeout);
+}
+
+module.exports = { runSSH, checkSSH, restartService, serviceStatus, powerAction };

@@ -48,28 +48,28 @@ function human(kb) {
 
 function pct(value) { return value == null ? "  --" : String(value.toFixed(1)).padStart(5); }
 function fit(value, width) { return String(value == null ? "" : value).slice(0, width).padEnd(width); }
-function addDetail(content, label, value, width) {
+function addDetail(content, label, value, width, selected) {
     const prefix = "      " + label + ": ";
     const available = Math.max(20, width - prefix.length);
     const chunks = String(value || "--").split(/(?<=; )/);
     let line = "";
     chunks.forEach(chunk => {
         if (line.length && line.length + chunk.length > available) {
-            content.push({ text: prefix + line, sub: true });
+            content.push({ text: prefix + line, sub: true, selected });
             line = "";
         }
         while (chunk.length > available) {
             if (line) {
-                content.push({ text: prefix + line, sub: true });
+                content.push({ text: prefix + line, sub: true, selected });
                 line = "";
             }
-            content.push({ text: prefix + chunk.slice(0, available), sub: true });
+            content.push({ text: prefix + chunk.slice(0, available), sub: true, selected });
             chunk = chunk.slice(available);
         }
         line += chunk;
     });
     if (line) {
-        content.push({ text: prefix + line, sub: true });
+        content.push({ text: prefix + line, sub: true, selected });
     }
 }
 
@@ -109,10 +109,10 @@ function render() {
             ? `${index === selected ? ">" : " "} ${fit(node.id, 6)} ${fit(node.host, 15)} ${fit(node.online ? "UP" : node.checking ? "CHECK" : "DOWN", 5)} C:${pct(m.cpuPercent).trim()}% T:${m.temperatureC == null ? "--" : m.temperatureC.toFixed(0)}C R:${m.memory ? human(m.memory.usedKb) + "/" + human(m.memory.availableKb) : "--"}${controls}`
             : `${index === selected ? ">" : " "} ${fit(node.id, 7)} ${fit(node.role, 12)} ${fit(node.host, 15)} ${fit(status, 7)} ${pct(m.cpuPercent)} ${m.temperatureC == null ? " -- " : String(m.temperatureC.toFixed(1)).padStart(5)} ${fit(mem, 22)}${controls}`;
         content.push({ text: row, selected: index === selected, node, control: index === selected && actionFocus > 0 });
-        addDetail(content, "DISK", diskSummary, width);
+        addDetail(content, "DISK", diskSummary, width, index === selected);
         const interfaces = m.interfaces || [];
         const network = interfaces.length ? interfaces.map(i => `${i.name} ${i.address} (${i.state})`).join(", ") : (node.online ? "No IPv4 interface reported" : (node.error || "SSH metrics unavailable"));
-        addDetail(content, "LAN", network, width);
+        addDetail(content, "LAN", network, width, index === selected);
     });
 
     const available = Math.max(1, height - 10);

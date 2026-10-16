@@ -245,10 +245,10 @@ process.stdin.on("keypress", (str, key) => {
     }
     if (key && (key.name === "q" || key.ctrl && key.name === "c")) return stop();
     const count = latest ? Object.keys(latest.nodes || {}).length : 0;
-    if (key && key.name === "up") { selected = Math.max(0, selected - 1); followSelection = true; actionMessage = ""; }
-    if (key && key.name === "down") { selected = Math.min(Math.max(0, count - 1), selected + 1); followSelection = true; actionMessage = ""; }
+    if (key && key.name === "up") { selected = Math.max(0, selected - 1); actionFocus = 0; followSelection = true; actionMessage = ""; }
+    if (key && key.name === "down") { selected = Math.min(Math.max(0, count - 1), selected + 1); actionFocus = 0; followSelection = true; actionMessage = ""; }
     if (key && key.name === "right") actionFocus = Math.min(2, actionFocus + 1);
-    if (key && key.name === "left") actionFocus = 0;
+    if (key && key.name === "left") actionFocus = Math.max(0, actionFocus - 1);
     if (key && key.name === "return" && actionFocus > 0 && !actionBusy) {
         const node = latest && latest.nodes && latest.nodes[Object.keys(latest.nodes).sort()[selected]];
         if (node) {

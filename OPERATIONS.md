@@ -72,9 +72,10 @@ this appliance uses the local Node dashboard instead and does not need Rust or
 the ZIP's dependencies.
 
 The selected node's row has **REBOOT** and **SHUTDOWN** controls at its end.
-Press Right to focus the controls, Right again to move between them, and Left
-to return focus to the node details. Up/Down changes nodes while retaining the
-focused control. Press Enter, then `y`, to confirm; `n` or Escape cancels.
+Press Right to move from the node to Reboot, then to Shutdown. Left steps back
+from Shutdown to Reboot to the node. Up/Down selects the adjacent node and
+returns focus to its default row. Press Enter, then `y`, to confirm; `n` or
+Escape cancels.
 Remote actions run `sudo -n /sbin/reboot` or `sudo -n /sbin/poweroff` over SSH.
 Atom6 uses the same commands through local `sudo -n`. The connected Atom1,
 Atom4, Atom6, and T60 currently have narrow NOPASSWD sudoers entries for both

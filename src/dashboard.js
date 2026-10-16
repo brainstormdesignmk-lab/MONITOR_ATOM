@@ -124,14 +124,16 @@ function render() {
     if (scroll > Math.max(0, content.length - available)) scroll = Math.max(0, content.length - available);
     content.slice(scroll, scroll + available).forEach(item => {
         let text = item.text.slice(0, width).padEnd(width);
+        const rowColor = item.selected
+            ? "\x1b[1;36m"
+            : item.node && item.node.online ? "\x1b[1;32m" : item.node ? "\x1b[31m" : "";
         if (item.control) {
             const button = item.text.indexOf(actionFocus === 1 ? "[ REBOOT ]" : "[ SHUTDOWN ]");
             const end = button < 0 ? -1 : button + (actionFocus === 1 ? 10 : 12);
-            text = "\x1b[1;32m" + text.slice(0, Math.max(0, button)) + "\x1b[0m" +
+            text = rowColor + text.slice(0, Math.max(0, button)) + "\x1b[0m" +
                 "\x1b[1;30;43m" + text.slice(Math.max(0, button), end) + "\x1b[0m" +
-                "\x1b[1;32m" + text.slice(end) + "\x1b[0m";
-        } else if (item.selected) text = "\x1b[1;32m" + text + "\x1b[0m";
-        else if (!item.sub && item.node && !item.node.online) text = "\x1b[31m" + text + "\x1b[0m";
+                rowColor + text.slice(end) + "\x1b[0m";
+        } else if (rowColor) text = rowColor + text + "\x1b[0m";
         lines.push(text);
     });
     while (lines.length < height - 3) lines.push("");

@@ -75,7 +75,9 @@ The selected node's row has **REBOOT** and **SHUTDOWN** controls at its end.
 Press Right to move from the node to Reboot, then to Shutdown. Left steps back
 from Shutdown to Reboot to the node. Up/Down selects the adjacent node and
 returns focus to its default row. Press Enter, then `y`, to confirm; `n` or
-Escape cancels.
+Escape cancels. Online machine rows are green, unavailable rows are red, and
+the selected row uses the dashboard title's blue/cyan color; a focused power
+button has a yellow highlight.
 Remote actions run `sudo -n /sbin/reboot` or `sudo -n /sbin/poweroff` over SSH.
 Atom6 uses the same commands through local `sudo -n`. The connected Atom1,
 Atom4, Atom6, and T60 currently have narrow NOPASSWD sudoers entries for both

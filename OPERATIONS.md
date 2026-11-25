@@ -46,9 +46,12 @@ tail -f /opt/metropolis/monitor/data/logs/monitor.log
 
 If root access is unavailable, deploy the repository under the `atom` home and
 run `scripts/user-service.sh install`. It starts the same restart supervisor
-and installs an `@reboot` entry in Atom6's user crontab. This depends on the
-cron daemon being enabled at boot. Check it with `scripts/user-service.sh
-status`; use `stop`, `start`, or `restart` for control.
+and installs an `@reboot` entry plus a one-minute recovery check in Atom6's user
+crontab. Node is resolved from the script's environment or common absolute
+paths, since cron's restricted `PATH` may not include `/usr/local/bin`. This
+depends on the cron daemon being enabled at boot. Check it with
+`scripts/user-service.sh status`; use `stop`, `start`, or `restart` for control.
+`stop` suppresses watchdog restarts until `start` is run or the machine reboots.
 
 ## SSH access and dashboard
 
